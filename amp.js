@@ -1,40 +1,39 @@
-(function() {
-  const feedContainer = document.querySelector('.container.FeedPosts');
-  const labels = feedContainer.querySelector('.data-labels').textContent.trim();
-  const maxPosts = feedContainer.querySelector('.data-maxposts').textContent.trim();
-  const thumbSize = feedContainer.querySelector('.data-thumbsize').textContent.trim().split(',');
+const script = document.currentScript;
+const feedPosts = script.closest('.feed-posts');
+const labels = feedPosts.querySelector('.data-labels').textContent.split(',');
+const maxPosts = parseInt(feedPosts.querySelector('.data-maxposts').textContent, 10);
+const thumbSize = feedPosts.querySelector('.data-thumbsize').textContent.split(',');
+const container = feedPosts.querySelector('.container.FeedPosts');
+const ampParameter = feedPosts.querySelector('.data-ampparameter').textContent;
+const contentTemplate = feedPosts.querySelector('.data-content').innerHTML;
 
-  const apiUrl = `https://planetsehat-com.blogspot.com/feeds/posts/summary/-/${labels}?alt=json&max-results=${maxPosts}`;
+const blogUrl = `https://${window.location.hostname}`;  // Secara otomatis menyesuaikan dengan URL blog yang dikunjungi
+const feedUrl = `${blogUrl}/feeds/posts/default/-/${labels.join('|')}?alt=json&max-results=${maxPosts}&thumbsize=${thumbSize.join(',')}&orderby=published&callback=?`;
 
-  fetch(apiUrl)
+function fetchPosts(url) {
+  fetch(url)
     .then(response => response.json())
     .then(data => {
-      const posts = data.feed.entry;
-
-      const postElements = posts.map(post => {
-        const thumbnailUrl = post.media$thumbnail.url.replace('s72-c', `s${thumbSize[0]}-c`);
-        const postUrl = post.link.find(link => link.rel === 'alternate').href;
+      const posts = data.feed.entry || [];
+      container.innerHTML = posts.map(post => {
         const title = post.title.$t;
-        const snippet = post.summary.$t.replace(/<[^>]*>/g, '').substring(0, 100) + '...';
+        const url = post.link.find(link => link.rel === 'alternate').href;
+        const thumbnail = post.media$thumbnail ? `<img src="${post.media$thumbnail.url.replace('s72-c', `s${thumbSize[0]}-${thumbSize[1]}`)}" alt="${title}"/>` : '';
+        const snippet = post.summary ? post.summary.$t.substring(0, 100) + '...' : '';
 
-        return `
-          <article class='feed-post nosnippet'>
-            <div class='feed-post-thumbnail'>
-              <a href='${postUrl}' target='_blank'>
-                <amp-img src='${thumbnailUrl}' width='${thumbSize[0]}' height='${thumbSize[1]}' layout='responsive' alt='${title}'></amp-img>
-              </a>
-            </div>
-            <h4 class='feed-post-title'>
-              <a href='${postUrl}' target='_blank'>${title}</a>
-            </h4>
-            <div class='feed-post-snippet'>${snippet}</div>
-          </article>
-        `;
+        return contentTemplate
+          .replace(/#{title}/g, title)
+          .replace(/#{url}/g, url)
+          .replace(/#{thumbnail}/g, thumbnail)
+          .replace(/#{snippet}/g, snippet);
       }).join('');
 
-      feedContainer.innerHTML = postElements;
+      if (ampParameter === 'amp') {
+        // Reinitialize AMP components if needed
+        AMP.getState()._AMP_BIND.reset(/* User-initiated reset */ true);
+      }
     })
-    .catch(error => {
-      console.error('Error fetching posts:', error);
-    });
-})();
+    .catch(err => console.error('Error fetching related posts:', err));
+}
+
+fetchPosts(feedUrl);
