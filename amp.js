@@ -11,7 +11,10 @@
   const blogUrl = `https://${window.location.hostname}`;
   const feedUrl = `${blogUrl}/feeds/posts/default/-/${labels.join('|')}?alt=json-in-script&max-results=${maxPosts}&thumbsize=${thumbSize.join(',')}&orderby=published&callback=handleResponse`;
 
+  console.log('Feed URL:', feedUrl); // Log URL for debugging
+
   function handleResponse(data) {
+    console.log('Feed data:', data); // Log data for debugging
     const posts = data.feed.entry || [];
     container.innerHTML = posts.map(post => {
       const title = post.title.$t;
@@ -27,7 +30,6 @@
     }).join('');
 
     if (ampParameter === 'amp') {
-      // Reinitialize AMP components if needed
       if (window.AMP) {
         window.AMP.getState()._AMP_BIND.reset(true);
       }
